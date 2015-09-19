@@ -7,10 +7,10 @@ library(RColorBrewer)
 library(base64enc)
 
 # 1. dev.twitter.com/app
-consumer_key <- "EjaxxzyBPyUQsTCMd3s8TZWQX"
-consumer_secret <- 'XtEZKugdH1eAk6bCXuohGUbeQDP4smC6w1AvHBHZtDAVmEXxzo'
-access_token <- '3473101817-SonuoiACqT0l2awdwtw3vvgacypVdm27SRuqA75'
-access_secret <- '6AJ1y6n617exVqk2AuvbAOgbyAZ6ZlqPLf2wtejVrJqrB'
+consumer_key <- "xxxx"
+consumer_secret <- 'xxxx'
+access_token <- 'xxxx'
+access_secret <- 'xxxx'
 
 setup_twitter_oauth(consumer_key,consumer_secret, access_token, access_secret)
 

@@ -1,27 +1,31 @@
 library(twitteR)
-library(sentiment)
+library(sentiment)#tm,NLP,Rstem
 library(plyr)
 library(ggplot2)
 library(wordcloud)
 library(RColorBrewer)
 library(base64enc)
 
-# 1. dev.twitter.com/app
-consumer_key <- "xxxx"
-consumer_secret <- 'xxxx'
-access_token <- 'xxxx'
-access_secret <- 'xxxx'
+###### 1. dev.twitter.com/app####
+consumer_key <- "xxx"
+consumer_secret <- 'xxx'
+access_token <- 'xxx'
+access_secret <- 'xxx'
 
 setup_twitter_oauth(consumer_key,consumer_secret, access_token, access_secret)
 
-jurassic = searchTwitter("Jurassic World", n=1500, lang="en")
-antman = searchTwitter("Ant Man", n=1500, lang="en")
-minions = searchTwitter("Minions", n=1500, lang="en")
-terminator = searchTwitter("Terminator Genisys", n=1500, lang="en")
+# jurassic = searchTwitter("Jurassic World", n=1500, lang="en")
+# antman = searchTwitter("Ant Man", n=1500, lang="en")
+# minions = searchTwitter("Minions", n=1500, lang="en")
+# terminator = searchTwitter("Terminator Genisys", n=1500, lang="en")
+load("jurassic.RData")
+load("antman.RData")
+load("minions.RData")
+load("terminator.RData")
 class(jurassic)
 
 
-# 2. clean the text
+##### 2. clean the text####
 jurassic_txt = sapply(jurassic, function(x) x$getText())
 antman_txt = sapply(antman, function(x) x$getText())
 minions_txt = sapply(minions, function(x) x$getText())
@@ -30,7 +34,7 @@ terminator_txt = sapply(terminator, function(x) x$getText())
 clean.tweets <- function(some_txt) {
   # &is HTML for "Start of a character reference"
   # &amp is the character reference for "An ampersand".
-  some_txt = gsub("&amp", "", some_txt)
+  some_txt = gsub("&amp", "", some_txt)# text replace
   some_txt = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", some_txt)
   some_txt = gsub("@\\w+", "", some_txt)
   some_txt = gsub("[[:punct:]]", "", some_txt)
@@ -55,9 +59,8 @@ clean.tweets <- function(some_txt) {
 }
 
 # clean an  remove stop words
-
 jurassic_txt <- clean.tweets(jurassic_txt)
-jurassic_txt = removeWords(jurassic_txt, stopwords("english"))
+jurassic_txt = removeWords(jurassic_txt, stopwords("english"))#by tm
 jurassic_txt = jurassic_txt[!is.na(jurassic_txt)]
 
 antman_txt <- clean.tweets(antman_txt)
@@ -72,7 +75,7 @@ terminator_txt <- clean.tweets(terminator_txt)
 terminator_txt = removeWords(terminator_txt, stopwords("english"))
 terminator_txt = terminator_txt[!is.na(terminator_txt)]
 
-# 3.Sentiment Analysis using R  
+##### 3.Sentiment Analysis using R  ####
 
 # 3.1 classify emotion
 ## The classifier is a Naive Bayes classifier trained on Carlo Strapparava and Alessandro Valitutti’s emotions lexicon. 
@@ -111,7 +114,7 @@ barplot(count_minions, main="Emotion classification of tweets about minions",
 barplot(count_terminator,main="Emotion classification of tweets about terminator", 
         xlab="Emotion", ylab="Counts", col=colors)  
 
-# 4. polarity classification  
+##### 4. polarity classification #### 
 ## the overall polarity of the tweets
 class_pol_jurassic = classify_polarity(jurassic_txt, algorithm="bayes")
 class_pol_antman = classify_polarity(antman_txt,algorithm="bayes")
@@ -125,7 +128,9 @@ pol_minions = class_pol_minions[,4]
 pol_terminator = class_pol_terminator[,4]
 
 # data frame with results
-df_jurassic = data.frame(text=jurassic_txt, emotion=emo_jurassic,polarity=pol_jurassic, stringsAsFactors=FALSE)
+df_jurassic = data.frame(text=jurassic_txt,
+                         emotion=emo_jurassic,
+                         polarity=pol_jurassic, stringsAsFactors=FALSE)
 df_antman = data.frame(text=antman_txt, emotion=emo_antman,polarity=pol_antman, stringsAsFactors=FALSE)
 df_minions = data.frame(text=minions_txt, emotion=emo_minions,polarity=pol_minions, stringsAsFactors=FALSE)
 df_terminator = data.frame(text=terminator_txt, emotion=emo_terminator, polarity=pol_terminator, stringsAsFactors=FALSE)
@@ -140,34 +145,39 @@ all <- data.frame(count_jurassic$Freq, count_antman$Freq,
 colnames(all) <- c("Jurassic World", "Ant Man", "Minions", "Terminator Genysis")
 barplot(as.matrix(all), main="Polarity of tweets", ylab = "Polarity",
         cex.lab = 1.5, cex.main = 1.4, beside=TRUE, col=c("blue", "grey", "violet"), legend = c("Negative", "Neutral", "Positive"), ylim=c(0,1500))
-# 5. word cloud  
+
+##### 5. word cloud  ####
 # sort emotion's levels
 df_jurassic = within(df_jurassic, emotion <- factor(emotion, levels=names(sort(table(emotion), decreasing=TRUE))))
 df_antman = within(df_antman, emotion <- factor(emotion,levels=names(sort(table(emotion), decreasing=TRUE))))
 df_minions = within(df_minions, emotion <- factor(emotion,levels=names(sort(table(emotion), decreasing=TRUE))))
 df_terminator = within(df_terminator, emotion <- factor(emotion, levels=names(sort(table(emotion), decreasing=TRUE))))
 
- 
-word_cloud<-function(df_movie){
-  # separating text by emotion into a vector:emo.doc
-  emos = levels(factor(df_movie$emotion))
-  nemo = length(emos)
-  emo.docs = rep("", nemo)
-  for (i in 1:nemo){
-    tmp = df_jurassic$text[df_jurassic$emotion == emos[i]]
-    emo.docs[i] = paste(tmp, collapse=" ")
-  }
-  
-  
-  # create corpus
-  corpus = Corpus(VectorSource(emo.docs))
-  tdm = TermDocumentMatrix(corpus)
-  tdm = as.matrix(tdm)
-  colnames(tdm) = emos
-  
-  # comparison word cloud
-  comparison.cloud(tdm, colors = brewer.pal(nemo, "Dark2"),
-                   scale = c(2.0,.5), random.order = FALSE, title.size = 1.5)
+
+
+# separating text by emotion into a vector:emo.doc
+load("jurassic_tweet_emotion.RData")
+system("open .")
+emos = levels(factor(df_jurassic$emotion))#7 feelings
+nemo = length(emos)
+emo.docs = rep("", nemo)
+for (i in 1:nemo){
+  tmp = df_jurassic$text[df_jurassic$emotion == emos[i]]
+  emo.docs[i] = paste(tmp, collapse=" ")
 }
-word_cloud(df_jurassic)
-word_cloud(df_minions)
+
+
+# create corpus
+corpus = Corpus(VectorSource(emo.docs))# 7 feelings' text vector 
+#the structure for managing documents in tm is called Corpus
+#which represents a collection of text documents  
+
+tdm = TermDocumentMatrix(corpus)
+#create a matrix with terms as rows and documents as columns
+
+tdm = as.matrix(tdm)
+colnames(tdm) = emos
+
+# comparison word cloud
+comparison.cloud(tdm, colors = brewer.pal(nemo, "Dark2"),
+                 scale = c(2.0,.5), random.order = FALSE, title.size = 1.5)
